@@ -61,12 +61,24 @@ def find_best(query, codes, llm_model="llama3.2"):
     prompt = (
         f"You are a tariff code expert. You need to find the best matches for a product named \"{query}\". "
         "The list of possible tariffs is:\n" + '\n'.join([f"{code} {desc}" for code, desc in codes]) +
-        "\ndo not print extra information, just print the ordered list of top matching items."
+        "\nReturn the answer as a JSON array of objects, each with two keys: 'code' and 'description'. Do not print extra information."
     )
+    format_schema = {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "code": {"type": "string"},
+                "description": {"type": "string"}
+            },
+            "required": ["code", "description"]
+        }
+    }
     payload = {
         "model": llm_model,
         "prompt": prompt,
-        "stream": False
+        "stream": False,
+        "format": format_schema
     }
     response = requests.post(url, json=payload)
     response.raise_for_status()
