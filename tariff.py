@@ -57,28 +57,34 @@ def get_top_matches(query, data, embedding_model, rag_count=50):
     return [(code, desc) for score, code, desc in top_matches]
 
 def find_best(query, codes, llm_model="llama3.2"):
+    global verbose
     url = "http://localhost:11434/api/generate"
     prompt = (
         f"You are a tariff code expert. You need to find the best matches for a product named \"{query}\". "
         "The list of possible tariffs is:\n" + '\n'.join([f"{code} {desc}" for code, desc in codes]) +
-        "\nReturn the answer as a JSON array of objects, each with two keys: 'code' and 'description'. Do not print extra information."
+        # "\nUsing this list of possible tariff codes, find the best matches and return the answer as a JSON array of codes."
+        "\nUsing this list of possible tariff codes, find the best matches."
     )
+    if verbose:
+        print("[VERBOSE] LLM prompt:\n" + prompt)
+    # format_schema = {
+    #     "type": "array",
+    #     "items": {
+    #         "type": "object",
+    #         "properties": {
+    #             "code": {"type": "string"},
+    #             "description": {"type": "string"}
+    #         },
+    #         "required": ["code", "description"]
+    #     }
     format_schema = {
         "type": "array",
-        "items": {
-            "type": "object",
-            "properties": {
-                "code": {"type": "string"},
-                "description": {"type": "string"}
-            },
-            "required": ["code", "description"]
-        }
     }
     payload = {
         "model": llm_model,
         "prompt": prompt,
         "stream": False,
-        "format": format_schema
+        # "format": format_schema
     }
     response = requests.post(url, json=payload)
     response.raise_for_status()
@@ -92,8 +98,8 @@ def exec_query(query, embedding_model, rag_count=50, llm_model="llama3.2"):
         data = json.load(f)
     top_matches = get_top_matches(query, data, embedding_model, rag_count)
     if verbose:
-        for code, desc in top_matches:
-            print(f"{code} {desc}")
+        for idx, (code, desc) in enumerate(top_matches, 1):
+            print(f"{idx}. {code} {desc}")
     print("[LOG] Top matches retrieved. Calling find_best...")
     find_best(query, top_matches, llm_model)
 
